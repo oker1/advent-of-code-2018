@@ -1,5 +1,6 @@
 package aoc.advent01
 
+import aoc.advent01.MainPart1.process
 import aoc.util._
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{NonEmptyChain, Validated, ValidatedNec}
@@ -21,33 +22,39 @@ object MainPart2 extends IOApp {
     }
   }
 
+  def process(
+    source: Stream[IO, String]
+  ): Stream[IO, Validated[NonEmptyChain[Throwable], Int]] = {
+    source.repeat
+      .map(
+        line => Validated.catchNonFatal(line.toInt).leftMap(NonEmptyChain.one)
+      )
+      .mapAccumulate(Acc(0, Set()).validNec[Throwable]) {
+        (_, _).mapN { (acc, change) =>
+          Acc(
+            acc.frequency.combine(change),
+            acc.reached.combine(Set(acc.frequency))
+          )
+        } -> ()
+      }
+      .map(_._1)
+      .filter {
+        case Valid(acc)    => acc.reached.contains(acc.frequency)
+        case Invalid(errs) => true
+      }
+      .take(1)
+      .map(_.map(_.frequency))
+  }
+
   val converter: Stream[IO, Unit] =
     Stream.resource(blockingExecutionContext).flatMap { blockingEC =>
-      readInput[IO]("src/main/resources/01-input.txt", blockingEC).repeat
-        .map(
-          line => Validated.catchNonFatal(line.toInt).leftMap(NonEmptyChain.one)
-        )
-        .mapAccumulate(Acc(0, Set()).validNec[Throwable]) {
-          (_, _).mapN { (acc, change) =>
-            Acc(
-              acc.frequency.combine(change),
-              acc.reached.combine(Set(acc.frequency))
-            )
-          } -> ()
-        }
-        .map(_._1)
-        .filter {
-          case Valid(acc)    => acc.reached.contains(acc.frequency)
-          case Invalid(errs) => true
-        }
-        .take(1)
-        .map(_.map(_.frequency))
+      process(readInput[IO]("src/main/resources/01-input.txt", blockingEC))
         .flatMap(
           validated =>
             Stream
               .fromIterator[IO, Byte](validated.toString.getBytes.toIterator)
         )
-        .to(io.stdout(blockingEC))
+        .to(Sink.showLinesStdOut)
     }
 
   def run(args: List[String]): IO[ExitCode] =

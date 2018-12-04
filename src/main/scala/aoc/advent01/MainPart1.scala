@@ -6,20 +6,25 @@ import cats.effect._
 import cats.implicits._
 import fs2._
 
-object Main extends IOApp {
+object MainPart1 extends IOApp {
+  def process(
+    source: Stream[IO, String]
+  ): Stream[IO, Validated[NonEmptyChain[Throwable], Int]] =
+    source
+      .map(
+        line => Validated.catchNonFatal(line.toInt).leftMap(NonEmptyChain.one)
+      )
+      .foldMonoid
+
   val converter: Stream[IO, Unit] =
     Stream.resource(blockingExecutionContext).flatMap { blockingEC =>
-      readInput[IO]("src/main/resources/01-input.txt", blockingEC)
-        .map(
-          line => Validated.catchNonFatal(line.toInt).leftMap(NonEmptyChain.one)
-        )
-        .foldMonoid
+      process(readInput[IO]("src/main/resources/01-input.txt", blockingEC))
         .flatMap(
           validated =>
             Stream
               .fromIterator[IO, Byte](validated.toString.getBytes.toIterator)
         )
-        .to(io.stdout(blockingEC))
+        .to(Sink.showLinesStdOut)
     }
 
   def run(args: List[String]): IO[ExitCode] =
