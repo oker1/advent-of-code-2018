@@ -1,9 +1,8 @@
 package aoc.advent01
 
-import aoc.advent01.MainPart1.process
 import aoc.util._
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{NonEmptyChain, Validated, ValidatedNec}
+import cats.data.{NonEmptyChain, Validated}
 import cats.effect._
 import cats.implicits._
 import cats.kernel.Monoid
@@ -49,11 +48,7 @@ object MainPart2 extends IOApp {
   val converter: Stream[IO, Unit] =
     Stream.resource(blockingExecutionContext).flatMap { blockingEC =>
       process(readInput[IO]("src/main/resources/01-input.txt", blockingEC))
-        .flatMap(
-          validated =>
-            Stream
-              .fromIterator[IO, Byte](validated.toString.getBytes.toIterator)
-        )
+        .map(_.toString)
         .to(Sink.showLinesStdOut)
     }
 

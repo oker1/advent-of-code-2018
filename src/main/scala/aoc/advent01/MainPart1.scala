@@ -19,11 +19,7 @@ object MainPart1 extends IOApp {
   val converter: Stream[IO, Unit] =
     Stream.resource(blockingExecutionContext).flatMap { blockingEC =>
       process(readInput[IO]("src/main/resources/01-input.txt", blockingEC))
-        .flatMap(
-          validated =>
-            Stream
-              .fromIterator[IO, Byte](validated.toString.getBytes.toIterator)
-        )
+        .map(_.toString)
         .to(Sink.showLinesStdOut)
     }
 
