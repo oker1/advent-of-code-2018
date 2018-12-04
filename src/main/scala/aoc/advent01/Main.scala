@@ -14,7 +14,11 @@ object Main extends IOApp {
           line => Validated.catchNonFatal(line.toInt).leftMap(NonEmptyChain.one)
         )
         .foldMonoid
-        .flatMap(validated => Stream.fromIterator[IO, Byte](validated.toString.getBytes.toIterator))
+        .flatMap(
+          validated =>
+            Stream
+              .fromIterator[IO, Byte](validated.toString.getBytes.toIterator)
+        )
         .to(io.stdout(blockingEC))
     }
 

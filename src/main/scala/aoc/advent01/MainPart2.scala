@@ -1,16 +1,12 @@
 package aoc.advent01
 
-import java.util.concurrent.Executors
-
 import aoc.util._
 import cats.data.Validated.{Invalid, Valid}
-import cats.data.{NonEmptyChain, Validated}
+import cats.data.{NonEmptyChain, Validated, ValidatedNec}
 import cats.effect._
 import cats.implicits._
 import cats.kernel.Monoid
 import fs2._
-
-import scala.concurrent.ExecutionContext
 
 object MainPart2 extends IOApp {
   case class Acc(frequency: Int, reached: Set[Int])
@@ -31,17 +27,13 @@ object MainPart2 extends IOApp {
         .map(
           line => Validated.catchNonFatal(line.toInt).leftMap(NonEmptyChain.one)
         )
-        .map(_.map(Acc(_, Set())))
         .mapAccumulate(Acc(0, Set()).validNec[Throwable]) {
-          case (acc, change: Invalid[NonEmptyChain[Throwable]]) =>
-            acc -> change
-          case (acc @ Invalid(_), change @ Valid(_)) =>
-            acc -> change
-          case (Valid(acc), change @ Valid(changeAcc)) =>
+          (_, _).mapN { (acc, change) =>
             Acc(
-              acc.frequency.combine(changeAcc.frequency),
+              acc.frequency.combine(change),
               acc.reached.combine(Set(acc.frequency))
-            ).validNec[Throwable] -> change
+            )
+          } -> ()
         }
         .map(_._1)
         .filter {
@@ -50,7 +42,11 @@ object MainPart2 extends IOApp {
         }
         .take(1)
         .map(_.map(_.frequency))
-        .flatMap(validated => Stream.fromIterator[IO, Byte](validated.toString.getBytes.toIterator))
+        .flatMap(
+          validated =>
+            Stream
+              .fromIterator[IO, Byte](validated.toString.getBytes.toIterator)
+        )
         .to(io.stdout(blockingEC))
     }
 
