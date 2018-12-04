@@ -7,7 +7,6 @@ import cats.effect.IO
 import org.scalatest.{DiagrammedAssertions, FunSuiteLike}
 
 class Part1Test extends FunSuiteLike with DiagrammedAssertions {
-
   test("site input") {
     val actual = runStream { blockingEC =>
       MainPart1.process(
