@@ -28,18 +28,19 @@ object MainPart2 extends IOApp {
       .map(
         line => Validated.catchNonFatal(line.toInt).leftMap(NonEmptyChain.one)
       )
-      .mapAccumulate(Acc(0, Set()).validNec[Throwable]) {
-        (_, _).mapN { (acc, change) =>
+      .mapAccumulate(Acc(0, Set()).validNec[Throwable]) { (acc, element) =>
+        val nextAcc = (acc, element).mapN { (acc, change) =>
           Acc(
             acc.frequency.combine(change),
             acc.reached.combine(Set(acc.frequency))
           )
-        } -> ()
+        }
+        (nextAcc, ())
       }
       .map(_._1)
       .filter {
-        case Valid(acc)    => acc.reached.contains(acc.frequency)
-        case Invalid(errs) => true
+        case Valid(acc) => acc.reached.contains(acc.frequency)
+        case Invalid(_) => true
       }
       .take(1)
       .map(_.map(_.frequency))
